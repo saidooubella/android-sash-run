@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,6 +34,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.TextFieldValue
@@ -68,7 +73,7 @@ private fun HomeScreen(model: MainScreenModel = viewModel()) {
       modifier = Modifier
          .fillMaxSize()
          .imePadding(),
-      topBar = { ShellUIToolbar(model::runSnippet) },
+      topBar = { SashRunToolbar(model::runSnippet) },
    ) { innerPadding ->
       Column(modifier = Modifier.padding(innerPadding)) {
          EditorInputText(
@@ -97,7 +102,7 @@ private fun HomeScreen(model: MainScreenModel = viewModel()) {
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-private fun ShellUIToolbar(onRun: () -> Unit) {
+private fun SashRunToolbar(onRun: () -> Unit) {
    TopAppBar(
       title = { Text(text = "Playground") },
       actions = {
@@ -114,15 +119,19 @@ private fun Output(state: MainScreenState, modifier: Modifier = Modifier) {
    Text(
       text = state.output,
       modifier = modifier
-         .fillMaxWidth()
          .verticalScroll(rememberScrollState())
+         .fillMaxWidth()
+         .padding(16.dp)
    )
 }
 
 @Composable
 private fun Diagnostics(diagnostics: ImmutableList<String>, modifier: Modifier = Modifier) {
    HorizontalDivider()
-   LazyColumn(modifier = modifier.fillMaxWidth()) {
+   LazyColumn(
+      modifier = modifier.fillMaxWidth(),
+      contentPadding = PaddingValues(16.dp),
+   ) {
       items(diagnostics) { diagnostic ->
          Text(text = diagnostic)
       }
@@ -138,7 +147,16 @@ private fun EditorInputText(
    BasicTextField(
       modifier = modifier
          .fillMaxSize()
-         .padding(16.dp),
+         .padding(16.dp)
+         .onKeyEvent {
+            when (it.key) {
+               Key.Tab -> {
+                  onTextChange(text.insert("    "))
+                  true
+               }
+               else -> false
+            }
+         },
       value = text,
       onValueChange = onTextChange,
       textStyle = TextStyle(
@@ -148,4 +166,10 @@ private fun EditorInputText(
       ),
       cursorBrush = SolidColor(MaterialTheme.colorScheme.onBackground),
    )
+}
+
+private fun TextFieldValue.insert(value: String): TextFieldValue {
+   val newText = text.substring(0, selection.start) + value + text.substring(selection.start)
+   val newSelection = TextRange(selection.start + value.length, selection.end + value.length)
+   return copy(text = newText, selection = newSelection)
 }
